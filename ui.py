@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import os
+import re
 import threading
 from PIL import Image, ImageTk
 from pypdf import PdfReader
@@ -8,6 +9,12 @@ from image_tools import images_to_pdf
 from pdf_tools import merge_pdfs, split_pdf, remove_pages, extract_pages, reorder_pages, pdf_to_images
 from optimize_tools import optimize_pdf
 from page_ranges import parse_page_ranges, parse_reorder_range
+
+try:
+    from tkinterdnd2 import TkinterDnD, DND_FILES
+    HAS_DND = True
+except ImportError:
+    HAS_DND = False
 
 
 COLORS = {
@@ -35,7 +42,7 @@ class RoundedFrame(tk.Frame):
         self.configure(highlightbackground=COLORS["border"], highlightthickness=1)
 
 
-class PDFConverterApp(tk.Tk):
+class PDFConverterApp(TkinterDnD.Tk if HAS_DND else tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Convertidor PDF")
@@ -284,6 +291,10 @@ class PDFConverterApp(tk.Tk):
         )
         self.preview_label.pack(fill="both", expand=True, padx=1, pady=1)
 
+        if HAS_DND:
+            self.listbox_images.drop_target_register(DND_FILES)
+            self.listbox_images.dnd_bind("<<Drop>>", self._on_drop_images)
+
         self._make_list_row_buttons(sec_files, [
             ("+ Agregar", self.add_images),
             ("^ Subir", self.move_up),
@@ -421,6 +432,10 @@ class PDFConverterApp(tk.Tk):
         scrollbar = ttk.Scrollbar(self.pdf_listbox, orient="vertical", command=self.pdf_listbox.yview)
         scrollbar.pack(side="right", fill="y")
         self.pdf_listbox.config(yscrollcommand=scrollbar.set)
+
+        if HAS_DND:
+            self.pdf_listbox.drop_target_register(DND_FILES)
+            self.pdf_listbox.dnd_bind("<<Drop>>", self._on_drop_pdfs)
 
         self._make_list_row_buttons(sec_files, [
             ("+ Agregar", self.add_pdfs),
@@ -640,6 +655,35 @@ class PDFConverterApp(tk.Tk):
     # ------------------------------------------------------------------ #
     #  IMAGE TAB LOGIC                                                    #
     # ------------------------------------------------------------------ #
+    IMAGE_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp")
+
+    def _parse_dropped_files(self, data):
+        files = re.findall(r'\{([^}]+)\}|(\S+)', data)
+        return [f.strip() for match in files for f in match if f.strip()]
+
+    def _on_drop_images(self, event):
+        files = self._parse_dropped_files(event.data)
+        added = 0
+        for f in files:
+            if f.lower().endswith(self.IMAGE_EXTENSIONS) and f not in self.listbox_images.get(0, tk.END):
+                self.listbox_images.insert(tk.END, f)
+                added += 1
+        if added:
+            self._set_status(f"{added} imagen(es) agregada(s) via drag and drop")
+            if not self.listbox_images.curselection():
+                self.listbox_images.selection_set(0)
+                self._on_image_select()
+
+    def _on_drop_pdfs(self, event):
+        files = self._parse_dropped_files(event.data)
+        added = 0
+        for f in files:
+            if f.lower().endswith(".pdf") and f not in self.pdf_listbox.get(0, tk.END):
+                self.pdf_listbox.insert(tk.END, f)
+                added += 1
+        if added:
+            self._set_status(f"{added} PDF(s) agregado(s) via drag and drop")
+
     def add_images(self):
         files = filedialog.askopenfilenames(
             title="Seleccionar imagenes",
