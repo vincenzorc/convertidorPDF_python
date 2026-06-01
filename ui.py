@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import os
 import threading
+from PIL import Image, ImageTk
 from pypdf import PdfReader
 from image_tools import images_to_pdf
 from pdf_tools import merge_pdfs, split_pdf, remove_pages, extract_pages, reorder_pages
@@ -38,8 +39,8 @@ class PDFConverterApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Convertidor PDF")
-        self.geometry("700x620")
-        self.minsize(700, 620)
+        self.geometry("860x690")
+        self.minsize(860, 690)
         self.configure(bg=COLORS["bg"])
 
         self._center_window()
@@ -55,6 +56,7 @@ class PDFConverterApp(tk.Tk):
 
         self.tab_image = tk.Frame(self.notebook, bg=COLORS["bg"])
         self.notebook.add(self.tab_image, text="  Imagen a PDF  ")
+        self._preview_image_ref = None
         self.setup_image_tab()
 
         self.tab_pdf = tk.Frame(self.notebook, bg=COLORS["bg"])
@@ -238,8 +240,15 @@ class PDFConverterApp(tk.Tk):
         frame = self.tab_image
 
         sec_files = self._make_section(frame, "Archivos", 0)
+
+        files_body = tk.Frame(sec_files, bg=COLORS["section_bg"])
+        files_body.pack(fill="both", expand=True)
+
+        left_panel = tk.Frame(files_body, bg=COLORS["section_bg"])
+        left_panel.pack(side="left", fill="both", expand=True)
+
         self.listbox_images = tk.Listbox(
-            sec_files,
+            left_panel,
             selectmode=tk.EXTENDED,
             height=7,
             font=("Consolas", 9),
@@ -250,10 +259,30 @@ class PDFConverterApp(tk.Tk):
             bd=1,
             activestyle="none",
         )
-        self.listbox_images.pack(fill="x")
-        scrollbar = ttk.Scrollbar(self.listbox_images, orient="vertical", command=self.listbox_images.yview)
+        self.listbox_images.pack(side="left", fill="both", expand=True)
+        self.listbox_images.bind("<<ListboxSelect>>", self._on_image_select)
+
+        scrollbar = ttk.Scrollbar(left_panel, orient="vertical", command=self.listbox_images.yview)
         scrollbar.pack(side="right", fill="y")
         self.listbox_images.config(yscrollcommand=scrollbar.set)
+
+        self.preview_frame = tk.Frame(
+            files_body, bg=COLORS["border"],
+            highlightbackground=COLORS["border"], highlightthickness=1,
+            width=200, height=160,
+        )
+        self.preview_frame.pack(side="right", padx=(10, 0))
+        self.preview_frame.pack_propagate(False)
+
+        self.preview_label = tk.Label(
+            self.preview_frame,
+            text="Sin vista previa",
+            font=("Segoe UI", 9),
+            fg=COLORS["muted"],
+            bg=COLORS["section_bg"],
+            anchor="center",
+        )
+        self.preview_label.pack(fill="both", expand=True, padx=1, pady=1)
 
         self._make_list_row_buttons(sec_files, [
             ("+ Agregar", self.add_images),
@@ -568,6 +597,37 @@ class PDFConverterApp(tk.Tk):
             if f not in self.listbox_images.get(0, tk.END):
                 self.listbox_images.insert(tk.END, f)
         self._set_status(f"{self.listbox_images.size()} imagen(es) seleccionada(s)")
+        if self.listbox_images.size() > 0 and not self.listbox_images.curselection():
+            self.listbox_images.selection_set(0)
+            self._on_image_select()
+
+    def _on_image_select(self, event=None):
+        selection = self.listbox_images.curselection()
+        if not selection:
+            self.preview_label.config(image="", text="Sin vista previa")
+            self._preview_image_ref = None
+            return
+        idx = selection[0]
+        path = self.listbox_images.get(idx)
+        if not os.path.isfile(path):
+            self.preview_label.config(image="", text="Archivo no encontrado")
+            self._preview_image_ref = None
+            return
+        try:
+            with Image.open(path) as img:
+                img.thumbnail((190, 150), Image.LANCZOS)
+                if img.mode == "RGBA":
+                    bg = Image.new("RGB", img.size, (255, 255, 255))
+                    bg.paste(img, mask=img.split()[3])
+                    img = bg
+                elif img.mode != "RGB":
+                    img = img.convert("RGB")
+                photo = ImageTk.PhotoImage(img)
+                self.preview_label.config(image=photo, text="")
+                self._preview_image_ref = photo
+        except Exception:
+            self.preview_label.config(image="", text="No se pudo cargar")
+            self._preview_image_ref = None
 
     def move_up(self):
         selected = self.listbox_images.curselection()
@@ -604,9 +664,12 @@ class PDFConverterApp(tk.Tk):
         for i in reversed(selected):
             self.listbox_images.delete(i)
         self._set_status(f"{self.listbox_images.size()} imagen(es) en la lista")
+        self._on_image_select()
 
     def clear_images(self):
         self.listbox_images.delete(0, tk.END)
+        self.preview_label.config(image="", text="Sin vista previa")
+        self._preview_image_ref = None
         self._set_status("Lista de imagenes vacia")
 
     def browse_output_folder(self):
