@@ -21,6 +21,7 @@ Herramienta de escritorio para convertir imagenes a PDF y manipular archivos PDF
 | Eliminar paginas | Remueve paginas especificadas |
 | Extraer paginas | Crea un PDF nuevo con solo las paginas seleccionadas |
 | Optimizar PDF | Reduce el tamano del archivo (Ligera / Media / Fuerte) |
+| PDF a Imagenes | Convierte cada pagina del PDF a PNG o JPG (DPI configurable) |
 
 ## Requisitos
 
