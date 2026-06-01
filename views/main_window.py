@@ -15,8 +15,8 @@ class MainWindow(TkinterDnD.Tk if HAS_DND else tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Convertidor PDF")
-        self.geometry("860x690")
-        self.minsize(860, 690)
+        self.geometry("860x710")
+        self.minsize(860, 710)
         self.configure(bg=COLORS["bg"])
 
         self._center_window()
