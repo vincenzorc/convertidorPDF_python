@@ -1,6 +1,6 @@
 from PIL import Image
 from typing import List
-import traceback
+import os
 
 
 class ImageConverter:
@@ -26,9 +26,13 @@ class ImageConverter:
         page_size: str = "Sin formato",
         margins: str = "Sin margenes",
         orientation: str = "Vertical",
-    ) -> bool:
+    ):
         if not image_paths:
-            return False
+            raise ValueError("No hay imagenes para convertir")
+
+        for path in image_paths:
+            if not os.path.isfile(path):
+                raise FileNotFoundError(f"Imagen no encontrada: {path}")
 
         if page_size not in self.PAGE_SIZES:
             page_size = "Sin formato"
@@ -46,29 +50,16 @@ class ImageConverter:
         else:
             resample = Image.LANCZOS
 
-        try:
-            images = []
-            for img_path in image_paths:
-                try:
-                    with Image.open(img_path) as img:
-                        img.load()
-                        img = self._ensure_rgb(img)
+        images = []
+        for img_path in image_paths:
+            with Image.open(img_path) as img:
+                img.load()
+                img = self._ensure_rgb(img)
+                if target_size is not None:
+                    img = self._fit_to_page(img, target_size, margin_pts, resample)
+                images.append(img.copy())
 
-                        if target_size is not None:
-                            img = self._fit_to_page(img, target_size, margin_pts, resample)
-
-                        images.append(img.copy())
-                except Exception as e:
-                    print(f"Failed to process image {img_path}: {e}")
-                    traceback.print_exc()
-                    return False
-
-            images[0].save(output_path, "PDF", save_all=True, append_images=images[1:])
-            return True
-        except Exception as e:
-            traceback.print_exc()
-            print(f"Error converting images to PDF: {e}")
-            return False
+        images[0].save(output_path, "PDF", save_all=True, append_images=images[1:])
 
     def _ensure_rgb(self, img: Image.Image) -> Image.Image:
         if img.mode == "RGBA":

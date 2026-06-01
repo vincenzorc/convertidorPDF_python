@@ -32,8 +32,9 @@ class PdfController:
             title="Seleccionar PDFs",
             filetypes=[("PDF files", "*.pdf"), ("All files", "*.*")],
         )
+        existing = set(self.view.pdf_listbox.get(0, "end"))
         for f in files:
-            if f not in self.view.pdf_listbox.get(0, "end"):
+            if f not in existing:
                 self.view.pdf_listbox.insert("end", f)
         count = self.view.pdf_listbox.size()
         self.main_window.set_status(f"{count} PDF(s) seleccionado(s)")
@@ -52,6 +53,15 @@ class PdfController:
         folder = filedialog.askdirectory()
         if folder:
             self.view.set_output_folder(folder)
+
+    def _validate_single_pdf(self, pdf_files, operation_name):
+        if len(pdf_files) != 1:
+            self.main_window.after(0, lambda: messagebox.showwarning(
+                "Advertencia", f"Para {operation_name}, seleccione exactamente un PDF"
+            ))
+            self.main_window.after(0, lambda: self.main_window.set_status("Listo"))
+            return False
+        return True
 
     def _execute(self):
         op = self.view.get_operation()
@@ -92,31 +102,26 @@ class PdfController:
 
     def _do_merge(self, pdf_files, output_folder):
         out = os.path.join(output_folder, "unido.pdf")
-        success = self.ops.merge(pdf_files, out)
-        self.main_window.after(0, lambda: self._success("PDFs unidos correctamente", out) if success else self._error("No se pudo unir los PDFs"))
+        self.ops.merge(pdf_files, out)
+        self.main_window.after(0, lambda: self._success("PDFs unidos correctamente", out))
 
     def _do_split(self, pdf_files, output_folder):
-        if len(pdf_files) != 1:
-            self.main_window.after(0, lambda: messagebox.showwarning("Advertencia", "Para dividir, seleccione exactamente un PDF"))
-            self.main_window.after(0, lambda: self.main_window.set_status("Listo"))
+        if not self._validate_single_pdf(pdf_files, "dividir"):
             return
         input_path = pdf_files[0]
-        widget = self.view.get_split_ranges()
-        ranges_str = widget.get().strip() if widget else "1"
-        one_per_page_widget = self.view.get_split_one_per_page()
-        one_per_page = one_per_page_widget.get() if one_per_page_widget else False
+        ranges_str = self.view.get_split_ranges()
+        one_per_page = self.view.get_split_one_per_page()
 
         total = self.ops.get_page_count(input_path)
         if one_per_page:
             ranges = [[i + 1] for i in range(total)]
         else:
-            parts = ranges_str.split(",")
             ranges = []
-            for part in parts:
+            for part in ranges_str.split(","):
                 part = part.strip()
                 if "-" in part:
-                    start, end = part.split("-")
-                    start, end = int(start.strip()), int(end.strip())
+                    start_s, end_s = part.split("-")
+                    start, end = int(start_s.strip()), int(end_s.strip())
                 else:
                     start = end = int(part)
                 start = max(1, min(start, total))
@@ -125,36 +130,31 @@ class PdfController:
                     start, end = end, start
                 ranges.append(list(range(start, end + 1)))
 
-        success = self.ops.split(input_path, output_folder, ranges)
-        msg = f"PDF dividido en {len(ranges)} parte(s)"
-        self.main_window.after(0, lambda: self._success(msg) if success else self._error("No se pudo dividir el PDF"))
+        self.ops.split(input_path, output_folder, ranges)
+        self.main_window.after(0, lambda: self._success(f"PDF dividido en {len(ranges)} parte(s)"))
 
     def _do_reorder(self, pdf_files, output_folder):
-        if len(pdf_files) != 1:
-            self.main_window.after(0, lambda: messagebox.showwarning("Advertencia", "Para reordenar, seleccione exactamente un PDF"))
-            self.main_window.after(0, lambda: self.main_window.set_status("Listo"))
+        if not self._validate_single_pdf(pdf_files, "reordenar"):
             return
         input_path = pdf_files[0]
-        widget = self.view.get_reorder_entry()
-        order_str = widget.get().strip() if widget else ""
+        order_str = self.view.get_reorder_entry()
         total = self.ops.get_page_count(input_path)
         new_order = parse_reorder_range(order_str, total)
         if not new_order:
-            self.main_window.after(0, lambda: messagebox.showwarning("Advertencia", "Orden no valido. Use formato como '3,1,2,4'."))
+            self.main_window.after(0, lambda: messagebox.showwarning(
+                "Advertencia", "Orden no valido. Use formato como '3,1,2,4'."
+            ))
             self.main_window.after(0, lambda: self.main_window.set_status("Listo"))
             return
         out = os.path.join(output_folder, "reordenado.pdf")
-        success = self.ops.reorder(input_path, out, new_order)
-        self.main_window.after(0, lambda: self._success("Paginas reordenadas", out) if success else self._error("No se pudo reordenar las paginas"))
+        self.ops.reorder(input_path, out, new_order)
+        self.main_window.after(0, lambda: self._success("Paginas reordenadas", out))
 
     def _do_remove(self, pdf_files, output_folder):
-        if len(pdf_files) != 1:
-            self.main_window.after(0, lambda: messagebox.showwarning("Advertencia", "Para eliminar paginas, seleccione exactamente un PDF"))
-            self.main_window.after(0, lambda: self.main_window.set_status("Listo"))
+        if not self._validate_single_pdf(pdf_files, "eliminar paginas"):
             return
         input_path = pdf_files[0]
-        widget = self.view.get_remove_ranges()
-        ranges_str = widget.get().strip() if widget else ""
+        ranges_str = self.view.get_remove_ranges()
         total = self.ops.get_page_count(input_path)
         pages = parse_page_ranges(ranges_str, total)
         if not pages and ranges_str:
@@ -162,17 +162,14 @@ class PdfController:
             self.main_window.after(0, lambda: self.main_window.set_status("Listo"))
             return
         out = os.path.join(output_folder, "sin_eliminadas.pdf")
-        success = self.ops.remove_pages(input_path, out, pages)
-        self.main_window.after(0, lambda: self._success("Paginas eliminadas", out) if success else self._error("No se pudo eliminar las paginas"))
+        self.ops.remove_pages(input_path, out, pages)
+        self.main_window.after(0, lambda: self._success("Paginas eliminadas", out))
 
     def _do_extract(self, pdf_files, output_folder):
-        if len(pdf_files) != 1:
-            self.main_window.after(0, lambda: messagebox.showwarning("Advertencia", "Para extraer paginas, seleccione exactamente un PDF"))
-            self.main_window.after(0, lambda: self.main_window.set_status("Listo"))
+        if not self._validate_single_pdf(pdf_files, "extraer paginas"):
             return
         input_path = pdf_files[0]
-        widget = self.view.get_extract_ranges()
-        ranges_str = widget.get().strip() if widget else ""
+        ranges_str = self.view.get_extract_ranges()
         total = self.ops.get_page_count(input_path)
         pages = parse_page_ranges(ranges_str, total)
         if not pages and ranges_str:
@@ -180,43 +177,32 @@ class PdfController:
             self.main_window.after(0, lambda: self.main_window.set_status("Listo"))
             return
         out = os.path.join(output_folder, "extraidas.pdf")
-        success = self.ops.extract_pages(input_path, out, pages)
-        self.main_window.after(0, lambda: self._success("Paginas extraidas", out) if success else self._error("No se pudo extraer las paginas"))
+        self.ops.extract_pages(input_path, out, pages)
+        self.main_window.after(0, lambda: self._success("Paginas extraidas", out))
 
     def _do_optimize(self, pdf_files, output_folder):
-        if len(pdf_files) != 1:
-            self.main_window.after(0, lambda: messagebox.showwarning("Advertencia", "Para optimizar, seleccione exactamente un PDF"))
-            self.main_window.after(0, lambda: self.main_window.set_status("Listo"))
+        if not self._validate_single_pdf(pdf_files, "optimizar"):
             return
         input_path = pdf_files[0]
-        widget = self.view.get_compress_level()
-        level_text = widget.get() if widget else "Media"
+        level_text = self.view.get_compress_level()
         level_map = {"Ligera": "light", "Media": "medium", "Fuerte": "strong"}
         level = level_map.get(level_text, "medium")
         out = os.path.join(output_folder, "optimizado.pdf")
-        success = self.optimizer.optimize(input_path, out, level)
-        self.main_window.after(0, lambda: self._success("PDF optimizado", out) if success else self._error("No se pudo optimizar el PDF"))
+        self.optimizer.optimize(input_path, out, level)
+        self.main_window.after(0, lambda: self._success("PDF optimizado", out))
 
     def _do_pdf_to_images(self, pdf_files, output_folder):
-        if len(pdf_files) != 1:
-            self.main_window.after(0, lambda: messagebox.showwarning("Advertencia", "Seleccione exactamente un PDF"))
-            self.main_window.after(0, lambda: self.main_window.set_status("Listo"))
+        if not self._validate_single_pdf(pdf_files, "convertir PDF a imagenes"):
             return
         input_path = pdf_files[0]
-        fmt_w = self.view.get_img_format()
-        dpi_w = self.view.get_img_dpi()
-        quality_w = self.view.get_img_quality()
-        fmt = fmt_w.get() if fmt_w else "PNG"
-        dpi = int(dpi_w.get() if dpi_w else "150")
+        fmt = self.view.get_img_format()
+        dpi = int(self.view.get_img_dpi())
         quality_map = {"Baja (60)": 60, "Media (80)": 80, "Alta (95)": 95}
-        quality = quality_map.get(quality_w.get() if quality_w else "Alta (95)", 95)
+        quality = quality_map.get(self.view.get_img_quality(), 95)
 
-        success = self.converter.convert(input_path, output_folder, fmt=fmt, quality=quality, dpi=dpi)
-        total = self.ops.get_page_count(input_path) if success else 0
-        if success:
-            self.main_window.after(0, lambda: self._success(f"{total} imagen(es) generadas en:\n{output_folder}"))
-        else:
-            self.main_window.after(0, lambda: self._error("No se pudo convertir el PDF a imagenes"))
+        self.converter.convert(input_path, output_folder, fmt=fmt, quality=quality, dpi=dpi)
+        total = self.ops.get_page_count(input_path)
+        self.main_window.after(0, lambda: self._success(f"{total} imagen(es) generadas en:\n{output_folder}"))
 
     def _success(self, msg, path=None):
         self.main_window.set_status(msg, COLORS["success"])

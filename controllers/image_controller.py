@@ -81,19 +81,22 @@ class ImageController:
         self.main_window.set_status("Convirtiendo...", COLORS["warning"])
 
         def worker():
-            success = self.model.convert(
-                image_paths, output_path,
-                page_size=page_format, margins=margin_option,
-                orientation=orientation,
-            )
-            self.main_window.after(0, lambda: self._on_convert_done(success, output_path))
+            try:
+                self.model.convert(
+                    image_paths, output_path,
+                    page_size=page_format, margins=margin_option,
+                    orientation=orientation,
+                )
+                self.main_window.after(0, lambda: self._on_convert_done(True, output_path))
+            except Exception as e:
+                self.main_window.after(0, lambda: self._on_convert_done(False, str(e)))
 
         threading.Thread(target=worker, daemon=True).start()
 
-    def _on_convert_done(self, success, output_path):
+    def _on_convert_done(self, success, result):
         if success:
-            self.main_window.set_status(f"Completado: {os.path.basename(output_path)}", COLORS["success"])
-            messagebox.showinfo("Exito", f"PDF creado correctamente:\n{output_path}")
+            self.main_window.set_status(f"Completado: {os.path.basename(result)}", COLORS["success"])
+            messagebox.showinfo("Exito", f"PDF creado correctamente:\n{result}")
         else:
             self.main_window.set_status("Error en la conversion", COLORS["error"])
-            messagebox.showerror("Error", "No se pudo convertir las imagenes a PDF")
+            messagebox.showerror("Error", f"No se pudo convertir las imagenes a PDF:\n{result}")

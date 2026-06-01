@@ -7,6 +7,7 @@ except ImportError:
     DND_FILES = None
 
 from views.widgets import COLORS, make_section, make_list_row_buttons, make_file_row
+from views.field_factory import FieldFactory
 
 
 class PdfToolsTab:
@@ -151,109 +152,66 @@ class PdfToolsTab:
         self.pdf_output_folder.insert(0, path)
 
     def get_split_ranges(self):
-        return getattr(self, "split_ranges_var", None)
+        return self._split_ranges_var.get().strip() if hasattr(self, "_split_ranges_var") else "1"
 
     def get_split_one_per_page(self):
-        return getattr(self, "split_one_per_page", None)
+        return self._split_one_per_page_var.get() if hasattr(self, "_split_one_per_page_var") else False
 
     def get_reorder_entry(self):
-        return getattr(self, "reorder_entry_var", None)
+        return self._reorder_entry_var.get().strip() if hasattr(self, "_reorder_entry_var") else ""
 
     def get_remove_ranges(self):
-        return getattr(self, "remove_ranges_var", None)
+        return self._remove_ranges_var.get().strip() if hasattr(self, "_remove_ranges_var") else ""
 
     def get_extract_ranges(self):
-        return getattr(self, "extract_ranges_var", None)
+        return self._extract_ranges_var.get().strip() if hasattr(self, "_extract_ranges_var") else ""
 
     def get_compress_level(self):
-        return getattr(self, "compress_level_widget", None)
+        return self._compress_level_var.get() if hasattr(self, "_compress_level_var") else "Media"
 
     def get_img_format(self):
-        return getattr(self, "img_format_widget", None)
+        return self._img_format_var.get() if hasattr(self, "_img_format_var") else "PNG"
 
     def get_img_dpi(self):
-        return getattr(self, "img_dpi_widget", None)
+        return self._img_dpi_var.get() if hasattr(self, "_img_dpi_var") else "150"
 
     def get_img_quality(self):
-        return getattr(self, "img_quality_widget", None)
+        return self._img_quality_var.get() if hasattr(self, "_img_quality_var") else "Alta (95)"
 
     def _setup_dynamic_fields(self):
         for widget in self.dynamic_inner.winfo_children():
             widget.destroy()
 
+        F = FieldFactory
+        p = self.dynamic_inner
         op = self.operation.get()
-        bg = COLORS["section_bg"]
 
         if op == "Unir PDFs":
-            tk.Label(
-                self.dynamic_inner,
-                text="Seleccione varios PDFs y se combinaran en un solo archivo.",
-                font=("Segoe UI", 9), fg=COLORS["muted"], bg=bg,
-                wraplength=500, justify="left",
-            ).pack(anchor="w")
+            F.create_info_field(p, "Seleccione varios PDFs y se combinaran en un solo archivo.")
 
         elif op == "Dividir PDF":
-            row = tk.Frame(self.dynamic_inner, bg=bg)
-            row.pack(fill="x", pady=2)
-            tk.Label(row, text="Rangos:", font=("Segoe UI", 9, "bold"), bg=bg, width=12, anchor="w").pack(side="left")
-            self.split_ranges_var = tk.StringVar(value="1")
-            tk.Entry(row, textvariable=self.split_ranges_var, font=("Segoe UI", 9), bg=COLORS["input_bg"], relief="solid", bd=1).pack(side="left", fill="x", expand=True)
-            tk.Label(row, text="ej: 1-3,5,8-10", font=("Segoe UI", 8), fg=COLORS["muted"], bg=bg).pack(side="left", padx=(6, 0))
-            self.split_one_per_page = tk.BooleanVar()
-            ttk.Checkbutton(self.dynamic_inner, text="Una pagina por archivo", variable=self.split_one_per_page).pack(anchor="w", pady=(6, 0))
+            self._split_ranges_var = F.create_range_field(p, "Rangos:", "ej: 1-3,5,8-10", "1")
+            self._split_one_per_page_var = F.create_checkbutton_field(p, "Una pagina por archivo")
 
         elif op == "Reordenar paginas":
-            row = tk.Frame(self.dynamic_inner, bg=bg)
-            row.pack(fill="x", pady=2)
-            tk.Label(row, text="Nuevo orden:", font=("Segoe UI", 9, "bold"), bg=bg, width=12, anchor="w").pack(side="left")
-            self.reorder_entry_var = tk.StringVar()
-            tk.Entry(row, textvariable=self.reorder_entry_var, font=("Segoe UI", 9), bg=COLORS["input_bg"], relief="solid", bd=1).pack(side="left", fill="x", expand=True)
-            tk.Label(row, text="ej: 3,1,2,4", font=("Segoe UI", 8), fg=COLORS["muted"], bg=bg).pack(side="left", padx=(6, 0))
+            self._reorder_entry_var = F.create_range_field(p, "Nuevo orden:", "ej: 3,1,2,4")
 
         elif op == "Eliminar paginas":
-            row = tk.Frame(self.dynamic_inner, bg=bg)
-            row.pack(fill="x", pady=2)
-            tk.Label(row, text="Paginas:", font=("Segoe UI", 9, "bold"), bg=bg, width=12, anchor="w").pack(side="left")
-            self.remove_ranges_var = tk.StringVar()
-            tk.Entry(row, textvariable=self.remove_ranges_var, font=("Segoe UI", 9), bg=COLORS["input_bg"], relief="solid", bd=1).pack(side="left", fill="x", expand=True)
-            tk.Label(row, text="ej: 1,3,5-7", font=("Segoe UI", 8), fg=COLORS["muted"], bg=bg).pack(side="left", padx=(6, 0))
+            self._remove_ranges_var = F.create_range_field(p, "Paginas:", "ej: 1,3,5-7")
 
         elif op == "Extraer paginas":
-            row = tk.Frame(self.dynamic_inner, bg=bg)
-            row.pack(fill="x", pady=2)
-            tk.Label(row, text="Paginas:", font=("Segoe UI", 9, "bold"), bg=bg, width=12, anchor="w").pack(side="left")
-            self.extract_ranges_var = tk.StringVar()
-            tk.Entry(row, textvariable=self.extract_ranges_var, font=("Segoe UI", 9), bg=COLORS["input_bg"], relief="solid", bd=1).pack(side="left", fill="x", expand=True)
-            tk.Label(row, text="ej: 1,3,5-7", font=("Segoe UI", 8), fg=COLORS["muted"], bg=bg).pack(side="left", padx=(6, 0))
+            self._extract_ranges_var = F.create_range_field(p, "Paginas:", "ej: 1,3,5-7")
 
         elif op == "Optimizar PDF":
-            row = tk.Frame(self.dynamic_inner, bg=bg)
-            row.pack(fill="x", pady=2)
-            tk.Label(row, text="Nivel:", font=("Segoe UI", 9, "bold"), bg=bg, width=12, anchor="w").pack(side="left")
-            self.compress_level_widget = ttk.Combobox(row, values=["Ligera", "Media", "Fuerte"], state="readonly", font=("Segoe UI", 9))
-            self.compress_level_widget.pack(side="left")
-            self.compress_level_widget.current(1)
-            tk.Label(row, text="Mas compression = menor tamano, posible perdida de calidad", font=("Segoe UI", 8), fg=COLORS["muted"], bg=bg).pack(side="left", padx=(10, 0))
+            self._compress_level_var = F.create_labeled_combobox_row(
+                p, "Nivel:", ["Ligera", "Media", "Fuerte"], 1,
+                "Mas compression = menor tamano, posible perdida de calidad",
+            )
 
         elif op == "PDF a Imagenes":
-            row_fmt = tk.Frame(self.dynamic_inner, bg=bg)
-            row_fmt.pack(fill="x", pady=2)
-            tk.Label(row_fmt, text="Formato:", font=("Segoe UI", 9, "bold"), bg=bg, width=12, anchor="w").pack(side="left")
-            self.img_format_widget = ttk.Combobox(row_fmt, values=["PNG", "JPG"], state="readonly", font=("Segoe UI", 9))
-            self.img_format_widget.pack(side="left")
-            self.img_format_widget.current(0)
-
-            row_dpi = tk.Frame(self.dynamic_inner, bg=bg)
-            row_dpi.pack(fill="x", pady=2)
-            tk.Label(row_dpi, text="DPI:", font=("Segoe UI", 9, "bold"), bg=bg, width=12, anchor="w").pack(side="left")
-            self.img_dpi_widget = ttk.Combobox(row_dpi, values=["72", "150", "300"], state="readonly", font=("Segoe UI", 9))
-            self.img_dpi_widget.pack(side="left")
-            self.img_dpi_widget.current(1)
-
-            row_q = tk.Frame(self.dynamic_inner, bg=bg)
-            row_q.pack(fill="x", pady=2)
-            tk.Label(row_q, text="Calidad JPG:", font=("Segoe UI", 9, "bold"), bg=bg, width=12, anchor="w").pack(side="left")
-            self.img_quality_widget = ttk.Combobox(row_q, values=["Baja (60)", "Media (80)", "Alta (95)"], state="readonly", font=("Segoe UI", 9))
-            self.img_quality_widget.pack(side="left")
-            self.img_quality_widget.current(2)
-            tk.Label(row_q, text="Solo aplica si el formato es JPG", font=("Segoe UI", 8), fg=COLORS["muted"], bg=bg).pack(side="left", padx=(10, 0))
+            self._img_format_var = F.create_labeled_combobox_row(p, "Formato:", ["PNG", "JPG"], 0)
+            self._img_dpi_var = F.create_labeled_combobox_row(p, "DPI:", ["72", "150", "300"], 1)
+            self._img_quality_var = F.create_labeled_combobox_row(
+                p, "Calidad JPG:", ["Baja (60)", "Media (80)", "Alta (95)"], 2,
+                "Solo aplica si el formato es JPG",
+            )
