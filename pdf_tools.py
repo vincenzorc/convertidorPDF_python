@@ -1,4 +1,5 @@
 import os
+import fitz
 from pypdf import PdfReader, PdfWriter, PageRange
 from typing import List
 
@@ -86,4 +87,46 @@ def reorder_pages(input_path: str, output_path: str, new_order: List[int]) -> bo
         return True
     except Exception as e:
         print(f"Error reordering pages: {e}")
+        return False
+
+
+def pdf_to_images(
+    input_path: str,
+    output_dir: str,
+    fmt: str = "PNG",
+    quality: int = 95,
+    dpi: int = 150,
+) -> bool:
+    """
+    Convert each page of a PDF into a separate image file.
+
+    Args:
+        input_path: Path to the source PDF.
+        output_dir: Directory where images will be saved.
+        fmt: Output format, "PNG" or "JPG".
+        quality: JPEG quality (1-100), ignored for PNG.
+        dpi: Resolution for rendering.
+
+    Returns:
+        True on success, False on failure.
+    """
+    try:
+        doc = fitz.open(input_path)
+        base_name = os.path.splitext(os.path.basename(input_path))[0]
+        ext = "png" if fmt == "PNG" else "jpg"
+        zoom = dpi / 72
+        matrix = fitz.Matrix(zoom, zoom)
+
+        for i, page in enumerate(doc):
+            pix = page.get_pixmap(matrix=matrix, alpha=False)
+            output_path = os.path.join(output_dir, f"{base_name}_pagina_{i + 1}.{ext}")
+            if fmt == "PNG":
+                pix.save(output_path)
+            else:
+                pix.save(output_path, jpg_quality=quality)
+
+        doc.close()
+        return True
+    except Exception as e:
+        print(f"Error converting PDF to images: {e}")
         return False

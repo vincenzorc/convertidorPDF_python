@@ -5,12 +5,14 @@ Herramienta de escritorio para convertir imagenes a PDF y manipular archivos PDF
 ## Funcionalidades
 
 ### Imagen a PDF
-- Convite multiples imagenes a un solo PDF
+- Convierte multiples imagenes a un solo PDF
 - Formatos soportados: **PNG**, **JPG**, **JPEG**, **WEBP**
 - Formato de hoja: **A4**, **Carta**, **Legal** o **Sin formato** (tamano original)
 - Orientacion: **Vertical** u **Horizontal**
 - Margenes: **Sin margenes**, **Poco**, **Medio**, **Mucho**
 - Reordenamiento de imagenes antes de convertir
+- **Vista previa** de imagenes seleccionadas
+- **Drag and drop** de imagenes directamente a la ventana
 
 ### Herramientas PDF
 | Operacion | Descripcion |
@@ -21,6 +23,9 @@ Herramienta de escritorio para convertir imagenes a PDF y manipular archivos PDF
 | Eliminar paginas | Remueve paginas especificadas |
 | Extraer paginas | Crea un PDF nuevo con solo las paginas seleccionadas |
 | Optimizar PDF | Reduce el tamano del archivo (Ligera / Media / Fuerte) |
+| PDF a Imagenes | Convierte cada pagina del PDF a PNG o JPG (DPI configurable) |
+
+> Todas las operaciones aceptan **drag and drop** de archivos PDF directamente a la lista.
 
 ## Requisitos
 
@@ -41,9 +46,10 @@ pip install -r requirements.txt
 
 | Paquete | Uso |
 |---|---|
-| Pillow | Conversion de imagenes a PDF |
+| Pillow | Conversion de imagenes a PDF, vista previa |
 | pypdf | Manipulacion de PDF (unir, dividir, reordenar, extraer, eliminar) |
-| PyMuPDF | Optimizacion y compresion de PDF |
+| PyMuPDF | Optimizacion de PDF y conversion PDF a imagenes |
+| tkinterdnd2 | Drag and drop de archivos |
 
 ## Ejecucion
 
