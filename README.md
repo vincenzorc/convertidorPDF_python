@@ -1,6 +1,6 @@
 # Convertidor PDF
 
-Herramienta de escritorio para convertir imagenes a PDF y manipular archivos PDF, desarrollada con Python y Tkinter.
+Herramienta de escritorio para convertir imagenes a PDF y manipular archivos PDF, desarrollada con Python, Tkinter y arquitectura MVC.
 
 ## Funcionalidades
 
@@ -27,6 +27,36 @@ Herramienta de escritorio para convertir imagenes a PDF y manipular archivos PDF
 
 > Todas las operaciones aceptan **drag and drop** de archivos PDF directamente a la lista.
 
+## Estructura del proyecto (MVC)
+
+```
+convertidorPDF/
+├── main.py                              # Punto de entrada
+├── models/
+│   ├── image_converter.py               # Conversion imagenes → PDF
+│   ├── pdf_operations.py                # Unir, dividir, reordenar, extraer, eliminar
+│   ├── pdf_optimizer.py                 # Compresion de PDF
+│   └── pdf_to_image_converter.py        # PDF → imagenes
+├── views/
+│   ├── main_window.py                   # Ventana principal, header, status bar
+│   ├── image_tab.py                     # UI pestana "Imagen a PDF"
+│   ├── pdf_tools_tab.py                 # UI pestana "Herramientas PDF"
+│   └── widgets.py                       # Helpers reutilizables (colores, secciones, botones)
+├── controllers/
+│   ├── image_controller.py              # Logica del tab de imagenes + threading
+│   └── pdf_controller.py                # Logica del tab de PDFs + threading
+├── utils/
+│   └── page_ranges.py                   # Parser de rangos de paginas
+├── requirements.txt
+└── README.md
+```
+
+### Arquitectura
+
+- **Models**: Logica de negocio pura (sin tkinter). Cada model encapsula una operacion.
+- **Views**: Construccion de widgets y getters para leer valores. Sin logica de negocio.
+- **Controllers**: Orquestan models y views. Manejan threading de forma segura con `after()`.
+
 ## Requisitos
 
 - Python 3.9 o superior
@@ -35,10 +65,7 @@ Herramienta de escritorio para convertir imagenes a PDF y manipular archivos PDF
 ## Instalacion
 
 ```bash
-# Clonar o descargar el proyecto
 cd convertidorPDF
-
-# Instalar dependencias
 pip install -r requirements.txt
 ```
 
@@ -57,43 +84,24 @@ pip install -r requirements.txt
 python main.py
 ```
 
-## Estructura del proyecto
-
-```
-convertidorPDF/
-├── main.py              # Punto de entrada
-├── ui.py                # Interfaz grafica (Tkinter)
-├── image_tools.py       # Conversion de imagenes a PDF
-├── pdf_tools.py         # Operaciones PDF (unir, dividir, etc.)
-├── optimize_tools.py    # Compresion de PDF
-├── page_ranges.py       # Parser de rangos de paginas
-├── requirements.txt     # Dependencias
-└── README.md            # Este archivo
-```
-
 ## Uso
 
 ### Convertir imagenes a PDF
-
 1. Ir a la pestana **Imagen a PDF**
-2. Hacer clic en **+ Agregar** y seleccionar las imagenes
-3. (Opcional) Reordenar con los botones **^ Subir** y **v Bajar**
+2. Hacer clic en **+ Agregar** o arrastrar imagenes a la lista
+3. Reordenar con **^ Subir** / **v Bajar** si es necesario
 4. Elegir formato de hoja, orientacion y margenes
-5. Ingresar nombre del archivo de salida
-6. Seleccionar carpeta de destino
-7. Hacer clic en **Convertir a PDF**
+5. Ingresar nombre y carpeta de destino
+6. Hacer clic en **Convertir a PDF**
 
 ### Manipular PDFs
-
 1. Ir a la pestana **Herramientas PDF**
 2. Seleccionar la operacion deseada
-3. Agregar el o los archivos PDF
-4. Configurar las opciones segun la operacion
-5. Elegir carpeta de destino
-6. Hacer clic en **Ejecutar**
+3. Agregar PDFs (boton o drag and drop)
+4. Configurar opciones segun la operacion
+5. Hacer clic en **Ejecutar**
 
 ### Ejemplos de rangos
-
 | Entrada | Resultado |
 |---|---|
 | `1` | Solo pagina 1 |
