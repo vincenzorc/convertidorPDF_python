@@ -41,6 +41,7 @@ convertidorPDF/
 │   ├── main_window.py                   # Ventana principal, header, status bar
 │   ├── image_tab.py                     # UI pestana "Imagen a PDF"
 │   ├── pdf_tools_tab.py                 # UI pestana "Herramientas PDF"
+│   ├── field_factory.py                 # Factory para campos dinamicos
 │   └── widgets.py                       # Helpers reutilizables (colores, secciones, botones)
 ├── controllers/
 │   ├── image_controller.py              # Logica del tab de imagenes + threading
@@ -56,6 +57,36 @@ convertidorPDF/
 - **Models**: Logica de negocio pura (sin tkinter). Cada model encapsula una operacion.
 - **Views**: Construccion de widgets y getters para leer valores. Sin logica de negocio.
 - **Controllers**: Orquestan models y views. Manejan threading de forma segura con `after()`.
+
+### Patrones de diseno
+
+**Strategy (manejo de errores)**
+Los models lanzan excepciones con contexto descriptivo en vez de retornar `False` silenciosamente. El controller captura las excepciones y las muestra al usuario.
+
+```python
+# Models: validan y lanzan
+raise FileNotFoundError(f"Archivo no encontrado: {path}")
+raise ValueError("No hay archivos PDF para unir")
+
+# Controller: captura y muestra
+except Exception as e:
+    self.main_window.after(0, lambda: self._error(str(e)))
+```
+
+**FieldFactory (campos dinamicos)**
+Genera campos de UI de forma declarativa, eliminando duplicacion en `PdfToolsTab`.
+
+```python
+# Antes: ~80 lineas repetitivas
+row = tk.Frame(self.dynamic_inner, bg=bg)
+row.pack(fill="x", pady=2)
+tk.Label(row, text="Rangos:", ...).pack(side="left")
+self.split_ranges_var = tk.StringVar(value="1")
+tk.Entry(row, textvariable=self.split_ranges_var, ...).pack(side="left")
+
+# Despues: 1 linea
+self._split_ranges_var = F.create_range_field(p, "Rangos:", "ej: 1-3,5,8-10", "1")
+```
 
 ## Requisitos
 
